@@ -33,25 +33,33 @@ func_get_server_version() {
     echo $version
 }
 
+func_update_server_version() {
+    local new_version=$1
+
+    $($SSH_COMMAND "echo \"VERSION=$new_version\" > $SYNCPASS_VERSION_PATH")
+}
+
 func_update_server_passwordstore() {
     # requirement: C_PATH
     if [ -d ~/.password-store ]; then
-        echo -e ">>> Found .password-store, preparing to send to server.\n"
+        printf ">>> Found .password-store, preparing to send to server.\n"
         # TODO verify env settings
-        echo -e ">>> Compressing local .password-store ...\n"
+        printf ">>> Compressing local .password-store ...\n"
         local compressed_zip_path="${C_PATH}/$PASSWORD_STORE_ZIP_FILENAME_LOCAL"
-        local compressed_zip=$(tar -czf $compressed_zip_path $HOME/.password-store)
-        echo -e ">>> Compressed local .password-store to $compressed_zip_path\n"
+        local compressed_zip=$(cd $HOME && tar -czf $compressed_zip_path .password-store)
+        printf ">>> Compressed local .password-store to $compressed_zip_path\n"
 
-        echo -e ">>> Sending to server ...\n"
-        local scp_command=$(private_func_get_scp_command "~/" "$compressed_zip_path")
+        printf ">>> Sending to server ...\n"
+        local scp_command=$(private_func_get_scp_command "~/$PASSWORD_STORE_ZIP_FILENAME_SERVER" "$compressed_zip_path")
         local send_zip=$($scp_command)
-        echo -e ">>> Sent local .password-store\n"
+        stty sane
+        printf ">>> Sent local .password-store\n"
 
-        echo -e ">>> Updating server's password-store ...\n"
-        local unzip_server=$($SSH_COMMAND "tar")
+        printf ">>> Updating server's password-store ...\n"
+        $($SSH_COMMAND "mkdir -p ~/.password-store && tar -xzf ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER -C ~/")
+        printf ">>> Finished updating the server's password-store\n"
     else
-        echo -e "> Could not find .password-store, try creating passwords locally first\n"
+        printf "> Could not find .password-store, try creating passwords locally first\n"
     fi
 }
 

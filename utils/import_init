@@ -16,14 +16,14 @@ private_func_init_base() {
     if [ -f version ]; then
         echo "Version file already exists"
     else
-        echo "V=1" > $VERSION_PATH
+        echo "VERSION=1" > $VERSION_PATH
         echo "+ Created version file"
     fi
 
-    if grep -q "V_PATH.*" $VERSION_PATH 2>/dev/null; then
+    if grep -q "V_PATH.*" $SETTINGS_PATH 2>/dev/null; then
         echo "Version path already set"
     else
-        echo $VERSION_PATH_SETTING >> $VERSION_PATH
+        echo $VERSION_PATH_SETTING >> SETTINGS_PATH$
         echo "+++ Version path set in version file"
     fi
 }

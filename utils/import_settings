@@ -1,7 +1,12 @@
 #!/bin/bash
 
+func_get_local_version() {
+    local curr_ver=$(cat "$V_PATH" | grep "VERSION=" | cut -d'=' -f2)
+    echo "$curr_ver"
+}
 func_increment_version() {
-    new_version=$(( V + 1))
+    local curr_ver=$(func_get_local_version)
+    local new_version=$(( curr_ver + 1))
     echo "VERSION=$new_version" > $V_PATH
 }
 func_print_settings() {

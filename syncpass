@@ -24,13 +24,13 @@ imp "./utils/import_settings"
 imp "./utils/import_ssh"
 
 
-current_version_needs_update() {
-    # 0 = success
+versions_are_unsynced() {
+    # 0 = needs update
     local server_ver=$(func_get_server_version)
     if [[ $server_ver -eq $V ]]; then
-        echo "versions are the same"
+        return 1
     else
-        echo "need version sync"
+        return 0
     fi
 }
 
@@ -38,14 +38,22 @@ case "$1" in
     add|edit)
         # pull server version to see if update is needed
         # push version update to server
-        local folder=$2
-        echo "found add/edit"
-        echo "Syncing: ${folder}"
-        result=$(pass $@)
+        echo -e "found add/edit\n"
+        pass $@ 2>&1
+        exit_code=$?
+
+        if [ $exit_code -eq 0 ]; then
+            echo -e "add/edit success\n"
+            func_increment_version
+            func_update_server_passwordstore
+
+            curr_ver=$(func_get_local_version)
+            func_update_server_version $curr_ver
+        else
+            echo -e "add/edit failed\n"
+        fi
         ;;
     test)
-        result=$(func_update_server_passwordstore)
-        echo $result
         ;;
     init)
         func_init_local
@@ -59,9 +67,16 @@ case "$1" in
     *)
         if [[ -n "$1" ]]; then
             folder=$1
-            result=$(pass show $folder)
+
+            local needs_update=$(versions_are_unsynced)
+            if [[ $needs_update -eq 0 ]]; then
+                echo -e ">>> Syncpass versions on server and local are unsynced, updating ...\n"
+            else
+                echo -e ">>> Syncpass Versions on server and local are synced. \n"
+            fi
+            local password=$(pass show $folder)
             # pull version to update if there is change if result is success
-            echo $result
+            echo $password
             exit 0
         fi
         func_print_settings
