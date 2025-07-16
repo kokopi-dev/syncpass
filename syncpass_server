@@ -1,0 +1,34 @@
+#!/bin/bash
+imp() {
+    local path=$1
+    if [ -f $path ]; then
+        set -a
+        source $path
+        set +a
+    fi
+}
+### env vars ###
+imp "version"
+imp "settings"
+
+### imports ###
+imp "./utils/import_init"
+# func_init_server
+imp "./utils/import_settings"
+# func_increment_version, func_print_settings
+
+case "$1" in
+    init)
+        func_init_server
+        ;;
+    *)
+        if [[ -n "$1" ]]; then
+            FOLDER=$1
+            result=$(pass show $1)
+            # pull version to update if there is change if result is success
+            exit 0
+        fi
+        func_print_settings
+        echo "Show help commands"
+        ;;
+esac

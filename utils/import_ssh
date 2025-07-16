@@ -1,0 +1,20 @@
+#!/bin/bash
+# env:
+## IP_ADDRESS,PORT,USERNAME
+#
+# func_get_server_version() {
+#
+# }
+
+func_get_server_home_path() {
+    local home_path
+    home_path=$(ssh $USERNAME@$IP_ADDRESS -i $PRIVATE_KEY -p $PORT 'echo $HOME')
+    echo "$home_path"
+}
+
+func_clone_server_syncpass() {
+    local path=$1
+    local repo="https://github.com/kokopi-dev/dotfiles"
+    ssh $USERNAME$IP_ADDRESS -i $PRIVATE_KEY -p $PORT "git clone $repo $path"
+}
+

@@ -1,0 +1,73 @@
+#!/bin/bash
+private_func_init_base() {
+    CURRENT_PATH=$(pwd)
+    CURRENT_PATH_SETTING="C_PATH=${CURRENT_PATH}"
+    VERSION_PATH="${CURRENT_PATH}/version"
+    VERSION_PATH_SETTING="V_PATH=${VERSION_PATH}"
+    SETTINGS_PATH="${CURRENT_PATH}/settings"
+    if [ -f settings ]; then
+        echo "Settings file already exists"
+    else
+        echo $VERSION_PATH_SETTING >> $SETTINGS_PATH
+        echo $CURRENT_PATH_SETTING >> $SETTINGS_PATH
+        echo "+ Created settings file"
+    fi
+
+    if [ -f version ]; then
+        echo "Version file already exists"
+    else
+        echo "V=1" > $VERSION_PATH
+        echo "+ Created version file"
+    fi
+
+    if grep -q "V_PATH.*" $VERSION_PATH 2>/dev/null; then
+        echo "Version path already set"
+    else
+        echo $VERSION_PATH_SETTING >> $VERSION_PATH
+        echo "+++ Version path set in version file"
+    fi
+}
+
+private_func_init_bashrc() {
+    local exec_path=$1
+    local command_name=$2
+
+    if grep -q "alias.*$command_name" ~/.bashrc 2>/dev/null; then
+        echo "Alias $command_name already exists in bashrc"
+    else
+        echo "+++ Setting up alias: $command_name in ~/.bashrc"
+        echo $exec_path >> ~/.bashrc
+        echo ">>> Run 'source ~/.bashrc'"
+    fi
+}
+private_func_check_env() {
+    echo ""
+    echo ">>> Reminder: .env file needs:"
+    echo ">>>>> IP_ADDRESS: public ip address of the server"
+    echo ">>>>> USERNAME: username of the server"
+    echo ">>>>> PORT: leave blank if no custom port"
+    echo ">>>>> PRIVATE_KEY: path to your private ssh key to the server"
+    echo ""
+    if [[ -z "$IP_ADDRESS" || -z "$PRIVATE_KEY" || -z "$USERNAME" ]]; then
+        echo "=== Please configure the .env file ==="
+        exit 1
+    fi
+}
+
+func_init_local() {
+    CURRENT_PATH=$(pwd)
+    EXEC_PATH="alias syncpass='bash ${CURRENT_PATH}/syncpass'"
+
+    private_func_check_env
+    private_func_init_base
+    private_func_init_bashrc "$EXEC_PATH" "syncpass"
+}
+
+func_init_server() {
+    CURRENT_PATH=$(pwd)
+    EXEC_PATH="alias syncpass='bash ${CURRENT_PATH}/syncpass_server'"
+
+    private_func_check_env
+    private_func_init_base
+    private_func_init_bashrc "$EXEC_PATH" "syncpass_server"
+}

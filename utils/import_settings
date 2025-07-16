@@ -1,0 +1,16 @@
+#!/bin/bash
+
+func_increment_version() {
+    new_version=$(( V + 1))
+    echo "VERSION=$new_version" > $V_PATH
+}
+func_print_settings() {
+    echo "IP Address: $IP_ADDRESS"
+    echo "PORT: $PORT"
+    echo "SSH PRIVATE KEY PATH: $PRIVATE_KEY"
+    echo "SYNCPASS VERSION: $V"
+    echo "---"
+    echo "SYNCPASS PATH: $C_PATH"
+    echo "VERSION PATH: $V_PATH"
+}
+

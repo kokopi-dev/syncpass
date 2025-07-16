@@ -1,0 +1,48 @@
+#!/bin/bash
+imp() {
+    local path=$1
+    if [ -f $path ]; then
+        set -a
+        source $path
+        set +a
+    fi
+}
+### env vars ###
+imp ".env"
+imp "version"
+imp "settings"
+
+### imports ###
+
+# func_init_local
+imp "./utils/import_init"
+
+# func_increment_version, func_print_settings
+imp "./utils/import_settings"
+
+# func_get_server_home_path
+imp "./utils/import_ssh"
+
+case "$1" in
+    add|edit)
+        local folder=$2
+        echo "found add/edit"
+        echo "Syncing: ${folder}"
+        result=$(pass $@)
+        ;;
+    init)
+        func_init_local
+        server_home_path=$(func_get_server_home_path)
+        ;;
+    *)
+        if [[ -n "$1" ]]; then
+            local folder=$1
+            result=$(pass show $folder)
+            # pull version to update if there is change if result is success
+            echo $result
+            exit 0
+        fi
+        func_print_settings
+        echo "Show help commands"
+        ;;
+esac
