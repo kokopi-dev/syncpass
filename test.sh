@@ -9,6 +9,10 @@ imp() {
 }
 ### imports ###
 imp ".env"
+imp "settings"
+imp "version"
 imp "./utils/import_ssh"
 
-func_get_server_home_path
+compressed_zip_path="${C_PATH}/$PASSWORD_STORE_ZIP_FILENAME_LOCAL"
+compressed_zip=$(tar -czf $compressed_zip_path $HOME/.password-store)
+echo $compressed_zip

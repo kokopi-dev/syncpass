@@ -23,20 +23,42 @@ imp "./utils/import_settings"
 # func_get_server_home_path
 imp "./utils/import_ssh"
 
+
+current_version_needs_update() {
+    # 0 = success
+    local server_ver=$(func_get_server_version)
+    if [[ $server_ver -eq $V ]]; then
+        echo "versions are the same"
+    else
+        echo "need version sync"
+    fi
+}
+
 case "$1" in
     add|edit)
+        # pull server version to see if update is needed
+        # push version update to server
         local folder=$2
         echo "found add/edit"
         echo "Syncing: ${folder}"
         result=$(pass $@)
         ;;
+    test)
+        result=$(func_update_server_passwordstore)
+        echo $result
+        ;;
     init)
         func_init_local
         server_home_path=$(func_get_server_home_path)
+        # check if server has syncpass
+        # check if server has a password store linked already
+        # pull server's password store, confrim before doing this
+        # check if there is password store local already before pulling, back it up if there is.
+        # back it up in current directory
         ;;
     *)
         if [[ -n "$1" ]]; then
-            local folder=$1
+            folder=$1
             result=$(pass show $folder)
             # pull version to update if there is change if result is success
             echo $result

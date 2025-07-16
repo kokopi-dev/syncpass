@@ -1,20 +1,83 @@
 #!/bin/bash
 # env:
-## IP_ADDRESS,PORT,USERNAME
-#
-# func_get_server_version() {
-#
-# }
+## IP_ADDRESS,PORT,USERNAME,PRIVATE_KEY
 
-func_get_server_home_path() {
-    local home_path
-    home_path=$(ssh $USERNAME@$IP_ADDRESS -i $PRIVATE_KEY -p $PORT 'echo $HOME')
-    echo "$home_path"
-}
+SSH_COMMAND="ssh $USERNAME@$IP_ADDRESS -i $PRIVATE_KEY -p $PORT"
+SYNCPASS_VERSION_PATH="~/.syncpass_version"
+PASSWORD_STORE_ZIP_FILENAME_LOCAL=".syncpass_passwordstore_compressed_local.tar.gz"
+PASSWORD_STORE_ZIP_FILENAME_SERVER=".syncpass_passwordstore_compressed_server.tar.gz"
 
-func_clone_server_syncpass() {
+private_func_get_scp_command() {
     local path=$1
-    local repo="https://github.com/kokopi-dev/dotfiles"
-    ssh $USERNAME$IP_ADDRESS -i $PRIVATE_KEY -p $PORT "git clone $repo $path"
+    local to_send_path=$2
+    if [[ -n $to_send_path ]]; then
+        echo "scp -P $PORT -i $PRIVATE_KEY $to_send_path $USERNAME@$IP_ADDRESS:$path"
+    else
+        echo "scp -i $PRIVATE_KEY -P $PORT $USERNAME@$IP_ADDRESS:$path"
+    fi
+}
+func_server_setup_syncpass_version() {
+    local result=$($SSH_COMMAND "
+        if [ -f ${SYNCPASS_VERSION_PATH} ]; then
+            echo 'Syncpass version already exists on the server.'
+        else
+            echo 'VERSION=1' > $SYNCPASS_VERSION_PATH
+            echo '>>> Added syncpass version file to server'
+        fi
+    ")
+    echo $result
 }
 
+func_get_server_version() {
+    local version=$($SSH_COMMAND "cat $SYNCPASS_VERSION_PATH" | grep "VERSION=" | cut -d'=' -f2)
+    echo $version
+}
+
+func_update_server_passwordstore() {
+    # requirement: C_PATH
+    if [ -d ~/.password-store ]; then
+        echo -e ">>> Found .password-store, preparing to send to server.\n"
+        # TODO verify env settings
+        echo -e ">>> Compressing local .password-store ...\n"
+        local compressed_zip_path="${C_PATH}/$PASSWORD_STORE_ZIP_FILENAME_LOCAL"
+        local compressed_zip=$(tar -czf $compressed_zip_path $HOME/.password-store)
+        echo -e ">>> Compressed local .password-store to $compressed_zip_path\n"
+
+        echo -e ">>> Sending to server ...\n"
+        local scp_command=$(private_func_get_scp_command "~/" "$compressed_zip_path")
+        local send_zip=$($scp_command)
+        echo -e ">>> Sent local .password-store\n"
+
+        echo -e ">>> Updating server's password-store ...\n"
+        local unzip_server=$($SSH_COMMAND "tar")
+    else
+        echo -e "> Could not find .password-store, try creating passwords locally first\n"
+    fi
+}
+
+func_get_server_passwordstore() {
+    # requirement: settings: C_PATH
+    # TODO check if settings exist
+
+    # 0 = has password store
+    local password_store_exists=$($SSH_COMMAND "
+        if [ -d ~/.password-store ]; then
+            return 0
+        else
+            return 1
+        fi
+    ")
+
+    if [[ $password_store_exists -eq 1 ]]; then
+        echo "> .password-store does not exist on the server, try uploading passwords first"
+        exit 1
+    fi
+
+    # this will overwrite the current version
+    local zip_pass=$($SSH_COMMAND "tar -czf ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER ~/.password-store")
+    # TODO confirm success
+    
+    local download_pass_command=$(private_func_get_scp_command "~/${PASSWORD_STORE_ZIP_FILENAME_SERVER}")
+    local download_pass=$($download_pass_command $C_PATH)
+    # TODO confirm success
+}
