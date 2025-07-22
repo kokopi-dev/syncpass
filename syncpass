@@ -43,12 +43,14 @@ confirm() {
 case "$1" in
     init)
         func_init_local
-        server_home_path=$(func_get_server_home_path)
+        print_status "INFO" "> Run 'syncpass update' if you need to update your password-store"
+        # server_home_path=$(func_get_server_home_path)
         # check if server has syncpass
         # check if server has a password store linked already
         # pull server's password store, confrim before doing this
         # check if there is password store local already before pulling, back it up if there is.
         # back it up in current directory
+        exit 0
         ;;
     *)
         ;;
