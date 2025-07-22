@@ -1,5 +1,5 @@
 # Syncpass
-pass wrapper for syncing .password-store to a server via ssh.
+pass (https://www.passwordstore.org/) wrapper for syncing .password-store to a server via ssh.
 For personal use, or whoever uses pass and wants to sync it to a server.
 
 ## Requirement
@@ -8,6 +8,7 @@ For personal use, or whoever uses pass and wants to sync it to a server.
 
 ## Setup Local
 .env needs file:
+
     - IP_ADDRESS (server's ip OR ddns, it will auto resolve)
     - USERNAME (server's user you want to access)
     - PORT
