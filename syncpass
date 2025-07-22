@@ -64,8 +64,10 @@ case "$1" in
         exit 1
         ;;
     update)
-        print_status "INFO" "> Preparing to update local syncpass from server"
+        print_status "INFO" "> Preparing to force update local syncpass from server"
+        server_ver=$(func_get_server_version)
         func_get_server_passwordstore
+        func_set_version $server_ver
         ;;
     add|edit|generate|rm)
         # push new version to server after command is finished running
