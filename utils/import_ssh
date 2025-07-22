@@ -33,7 +33,7 @@ func_get_server_version() {
     if $SSH_COMMAND "cat $SYNCPASS_VERSION_PATH" | grep "VERSION=" | cut -d'=' -f2; then
         echo $version
     else
-        echo -e "✗ ERROR - func_get_server_version: SSH command failed."
+        print_status "ERROR" "✗ ERROR - func_get_server_version: SSH command failed."
         exit 1
     fi
 }
@@ -42,13 +42,13 @@ func_get_server_version() {
 func_update_server_version() {
     if [[ -n "$1" ]]; then
         if $SSH_COMMAND "echo \"VERSION=$1\" > $SYNCPASS_VERSION_PATH"; then
-            echo "✓ SSH successful"
+            print_status "OK" "✓ SSH successful"
         else
-            echo -e "✗ ERROR - func_update_server_version: SSH command failed."
+            print_status "ERROR" "✗ func_update_server_version: SSH command failed."
             exit 1
         fi
     else
-        echo -e "✗ ERROR - func_update_server_version: Version arguement required."
+        print_status "ERROR" "✗ func_update_server_version: Version arguement required."
         exit 1
     fi
 }
@@ -58,27 +58,28 @@ func_update_server_passwordstore() {
     # requirement: C_PATH
     # TODO verify env settings
     if [ -d ~/.password-store ]; then
-        echo -e ">>> Found .password-store, preparing to send to server."
+        print_status "INFO" ">>> Found .password-store, preparing to send to server."
     else
-        echo -e "> Could not find .password-store, try creating passwords locally first"
+        print_status "ERROR" "> Could not find .password-store, try creating passwords locally first"
         exit 1
     fi
 
     # compress local .password-store
-    echo -e ">>> Compressing local .password-store ..."
+    print_status "INFO" ">>> Compressing local .password-store ..."
     local compressed_zip_path="${C_PATH}/$PASSWORD_STORE_ZIP_FILENAME_LOCAL"
     if cd $HOME && tar -czf $compressed_zip_path .password-store; then
-        echo -e "✓ Compressed local .password-store to $compressed_zip_path\n"
+        print_status "OK" "✓ Compressed local .password-store to $compressed_zip_path\n"
     else
-        echo -e "✗ ERROR - func_update_server_passwordstore: Compressing local .password-store failed."
+        print_status "ERROR" "✗ func_update_server_passwordstore: Compressing local .password-store failed."
         exit 1
     fi
 
     # send compressed local to server
     if $(private_func_get_scp_command "~/${PASSWORD_STORE_ZIP_FILENAME_SERVER}" $compressed_zip_path); then
-        echo -e "\n✓ Sent local .password-store to the server"
+        echo -e ""
+        print_status "OK" "✓ Sent local .password-store to the server"
     else
-        echo -e "✗ ERROR - func_update_server_passwordstore: SCP command failed."
+        print_status "ERROR" "✗ func_update_server_passwordstore: SCP command failed."
         exit 1
     fi
 
@@ -99,7 +100,7 @@ func_get_server_passwordstore() {
     # TODO check if settings exist
 
     if $SSH_COMMAND "[ -f ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER ]"; then
-        echo -e "✓ Found .password-store copy on server\n"
+        print_status "OK" "✓ Found compressed password-store on server\n"
         # if $SSH_COMMAND "tar -czf ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER ~/.password-store"; then
         #     echo -e "✓ Compressed .password-store on server\n"
         # else
@@ -107,23 +108,24 @@ func_get_server_passwordstore() {
         #     exit 1
         # fi
     else
-        echo "✗ .password-store does not exist on the server, try uploading passwords first"
+        print_status "ERROR" "✗ .password-store does not exist on the server, try uploading passwords first"
         exit 1
     fi
 
     # download server's password store on local
     if $(private_func_get_scp_command "~/${PASSWORD_STORE_ZIP_FILENAME_SERVER}") $C_PATH; then
-        echo -e "\n✓ Downloaded .password-store from server -> $PASSWORD_STORE_ZIP_FILENAME_SERVER"
+        echo -e ""
+        print_status "OK" "✓ Downloaded .password-store from server -> $PASSWORD_STORE_ZIP_FILENAME_SERVER"
     else
-        echo -e "✗ ERROR - func_get_server_passwordstore: SCP command failed."
+        print_status "ERROR" "✗ func_get_server_passwordstore: SCP command failed."
         exit 1
     fi
 
     # # unzip downloaded
     if tar -xzf "$C_PATH/$PASSWORD_STORE_ZIP_FILENAME_SERVER"  -C ~/; then
-        echo -e "✓ Successfully synced local .password-store from the server"
+        print_status "OK" "✓ Successfully synced local .password-store from the server"
     else
-        echo -e "✗ ERROR - func_get_server_passwordstore: tar command failed."
+        print_status "ERROR" "✗ func_get_server_passwordstore: tar command failed."
         exit 1
     fi
 }

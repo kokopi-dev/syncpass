@@ -1,0 +1,35 @@
+#!/bin/bash
+check_dns_tools() {
+    if command -v drill >/dev/null 2>&1; then
+        DNS_TOOL="drill"
+        return 0
+    elif command -v dig >/dev/null 2>&1; then
+        DNS_TOOL="dig"
+        return 0
+    else
+        print_status "ERROR" "> Error: Neither 'drill' nor 'dig' found. Please install ldns or bind-utils." >&2
+        exit 1
+    fi
+}
+
+func_ddns_check() {
+    if [[ "$IP_ADDRESS" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        print_status "INFO" ">>> Using IP Address from config..."
+    else
+        print_status "INFO" ">>> IP address looks like a domain, resolving: $IP_ADDRESS ..."
+        DDNS_DOMAIN=$IP_ADDRESS
+    fi
+
+    if [[ -n $DDNS_DOMAIN ]]; then
+        check_dns_tools
+        case "$DNS_TOOL" in
+            drill)
+            IP_ADDRESS=$(drill "$DDNS_DOMAIN" | awk '/^[^;].*IN.*A/ {print $5; exit}')
+                ;;
+            dig)
+            IP_ADDRESS=$(dig +short "$DDNS_DOMAIN")
+                ;;
+        esac
+        print_status "OK" "✓ IP_ADDRESS was converted"
+    fi
+}

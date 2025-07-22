@@ -43,7 +43,7 @@ private_func_init_bashrc() {
 private_func_check_env() {
     echo ""
     echo ">>> Reminder: .env file needs:"
-    echo ">>>>> IP_ADDRESS: public ip address of the server"
+    echo ">>>>> IP_ADDRESS: public ip address/ddns of the server"
     echo ">>>>> USERNAME: username of the server"
     echo ">>>>> PORT: leave blank if no custom port"
     echo ">>>>> PRIVATE_KEY: path to your private ssh key to the server"
@@ -60,14 +60,5 @@ func_init_local() {
 
     private_func_check_env
     private_func_init_base
-    private_func_init_bashrc "$EXEC_PATH" "syncpass"
-}
-
-func_init_server() {
-    CURRENT_PATH=$(pwd)
-    EXEC_PATH="alias syncpass='bash ${CURRENT_PATH}/syncpass_server'"
-
-    private_func_check_env
-    private_func_init_base
-    private_func_init_bashrc "$EXEC_PATH" "syncpass_server"
+    private_func_init_bashrc "$EXEC_PATH" "pass"
 }

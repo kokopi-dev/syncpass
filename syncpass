@@ -1,12 +1,4 @@
 #!/bin/bash
-check_dns_tools() {                                         if command -v drill >/dev/null 2>&1; then
-        DNS_TOOL="drill"                                        return 0
-    elif command -v dig >/dev/null 2>&1; then
-        DNS_TOOL="dig"
-        return 0
-    else                                                        echo "> Error: Neither 'drill' nor 'dig' found. Please install ldns or bind-utils." >&2
-        exit 1
-    fi                                                  }
 imp() {
     local path=$1
     if [ -f $path ]; then
@@ -17,23 +9,12 @@ imp() {
 }
 ### env vars ###
 imp ".env"
-if [[ -n $DDNS_DOMAIN ]]; then
-    check_dns_tools
-    case "$DNS_TOOL" in
-        drill)
-	    IP_ADDRESS=$(drill "$DDNS_DOMAIN" | awk '/^[^;].*IN.*A/ {print $5; exit}')
-            ;;
-        dig)
-	    IP_ADDRESS=$(dig +short "$DDNS_DOMAIN")
-            ;;
-    esac
-    echo -e "set ip: $IP_ADDRESS"
-fi
 imp "version"
 imp "settings"
 
 
 ### imports ###
+imp "./utils/import_print"
 
 # func_init_local
 imp "./utils/import_init"
@@ -44,6 +25,7 @@ imp "./utils/import_settings"
 # func_get_server_home_path
 imp "./utils/import_ssh"
 
+imp "./utils/import_ddns_check"
 
 confirm() {
     if [[ -n "$1" ]]; then
@@ -56,6 +38,8 @@ confirm() {
         [[ $REPLY =~ ^[Yy]$ ]]
     fi
 }
+
+
 case "$1" in
     init)
         func_init_local
@@ -74,10 +58,11 @@ esac
 
 case "$1" in
     add|edit|generate|rm)
+        func_ddns_check
         # push new version to server after command is finished running
-        if pass $@; then
+        if command pass $@; then
             func_increment_version
-            echo -e "✓ Local version updated"
+            print_status "OK" "✓ Local version updated"
 
             # update server's passwordstore
             func_update_server_passwordstore
@@ -85,12 +70,13 @@ case "$1" in
             # update server's version
             curr_ver=$(func_get_local_version)
             func_update_server_version $curr_ver
-            echo -e "✓ Server version updated"
+            print_status "OK" "✓ Server version updated"
         else
-            echo -e "✗ pass command failed."
+            print_status "ERROR" "✗ pass command failed."
         fi
         ;;
     inject)
+        func_ddns_check
         func_update_server_passwordstore
         ;;
     help)
@@ -108,30 +94,33 @@ case "$1" in
         done
 
         case "$first_non_flag" in
-            ls|find|grep|insert|edit|generate|rm|mv|cp|git) return 1 ;;
+            ls|find|grep|insert|edit|generate|rm|mv|cp|git)
+                return 1 ;;
             "") 
-                echo -e "✗ Syncpass could not determine the pass command."
+                # probably want pass show
+                command pass show
                 exit 1
                 ;;
             *)
+                func_ddns_check
                 ## Probably trying to get password
                 ### Sync server and local before running pass
 
                 server_ver=$(func_get_server_version)
 
-                echo "✓ SSH successful"
+                print_status "OK" "✓ SSH successful"
 
                 if (( server_ver == VERSION )); then
-                    echo -e "✓ Syncpass versions on server and local are synced."
+                    print_status "INFO" "✓ Syncpass versions on server and local are synced."
                 elif (( server_ver < VERSION ));then
-                    echo -e ">>> WARNING: Local version is ahead of server"
-                    echo -e ">>> Recommending to run 'syncpass sync'"
+                    print_status "INFO" ">>> WARNING: Local version is ahead of server"
+                    print_status "INFO" ">>> Recommending to run 'syncpass sync'"
                 else
-                    echo -e "✗ Local .password-store is behind server, preparing to update"
+                    print_status "INFO" "✗ Local .password-store is behind server, preparing to update"
                     if confirm "> Are you sure you want to overwrite/update your local .password-store with the one from the server?"; then
-                        echo -e ">>> Preparing to update your local password-store ..."
+                        print_status "INFO" ">>> Preparing to update your local password-store ..."
                     else
-                        echo -e "> Exiting syncpass, no changes have been made."
+                        print_status "ERROR" "> Exiting syncpass, no changes have been made."
                         exit 1
                     fi
 
@@ -150,7 +139,8 @@ case "$1" in
                     # unzip it to local
                 fi
 
-                pass $@ 2>&1
+                echo -e ""
+                command pass $@ 2>&1
                 exit_code=$?
 
                 if [ $exit_code -ne 0 ]; then
@@ -160,33 +150,33 @@ case "$1" in
                 ;;
         esac
 
-        if [[ -n "$1" ]]; then
-            folder=$1
-
-            server_ver=$(func_get_server_version)
-
-            if (( server_ver == VERSION )); then
-                echo -e ">>> Syncpass versions on server and local are synced. \n"
-            elif (( server_ver < VERSION ));then
-                echo -e ">>> Local version is ahead of server \n"
-                echo -e ">>> Syncpass versions on server and local are unsynced, updating ...\n"
-            else
-                echo -e ">>> Local version is behind server, preparing to update ...\n"
-                # backup local to a _backup_timestamp.tar.gz
-                sp_filename="${C_PATH}/.password-store_backup.tar.gz"
-                compressed_zip=$(cd $HOME && tar -czf $sp_filename .password-store)
-                echo -e ">>> Backed up local ~/.password-store to .password-store_backup.tar.gz"
-            fi
-
-            if password=$(pass show "$folder" 2>/dev/null); then
-                echo $password
-            else
-                echo -e "> Failed to retrieve password for '$folder'"
-                exit 1
-            fi
-
-        elif [ $# -eq 0 ]; then
-            pass
-        fi
-        ;;
+        # if [[ -n "$1" ]]; then
+        #     folder=$1
+        #
+        #     server_ver=$(func_get_server_version)
+        #
+        #     if (( server_ver == VERSION )); then
+        #         echo -e ">>> Syncpass versions on server and local are synced. \n"
+        #     elif (( server_ver < VERSION ));then
+        #         echo -e ">>> Local version is ahead of server \n"
+        #         echo -e ">>> Syncpass versions on server and local are unsynced, updating ...\n"
+        #     else
+        #         echo -e ">>> Local version is behind server, preparing to update ...\n"
+        #         # backup local to a _backup_timestamp.tar.gz
+        #         sp_filename="${C_PATH}/.password-store_backup.tar.gz"
+        #         compressed_zip=$(cd $HOME && tar -czf $sp_filename .password-store)
+        #         echo -e ">>> Backed up local ~/.password-store to .password-store_backup.tar.gz"
+        #     fi
+        #
+        #     if password=$(pass show "$folder" 2>/dev/null); then
+        #         echo $password
+        #     else
+        #         echo -e "> Failed to retrieve password for '$folder'"
+        #         exit 1
+        #     fi
+        #
+        # elif [ $# -eq 0 ]; then
+        #     pass
+        # fi
+        # ;;
 esac
