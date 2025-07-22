@@ -56,7 +56,7 @@ private_func_check_env() {
 
 func_init_local() {
     CURRENT_PATH=$(pwd)
-    EXEC_PATH="alias syncpass='bash ${CURRENT_PATH}/syncpass'"
+    EXEC_PATH="alias syncpass='cd ${CURRENT_PATH} && bash ${CURRENT_PATH}/syncpass'"
 
     private_func_check_env
     private_func_init_base
