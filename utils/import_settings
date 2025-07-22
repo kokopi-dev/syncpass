@@ -1,5 +1,4 @@
 #!/bin/bash
-
 func_get_local_version() {
     local curr_ver=$(cat "$V_PATH" | grep "VERSION=" | cut -d'=' -f2)
     echo "$curr_ver"

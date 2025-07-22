@@ -1,4 +1,12 @@
 #!/bin/bash
+check_dns_tools() {                                         if command -v drill >/dev/null 2>&1; then
+        DNS_TOOL="drill"                                        return 0
+    elif command -v dig >/dev/null 2>&1; then
+        DNS_TOOL="dig"
+        return 0
+    else                                                        echo "> Error: Neither 'drill' nor 'dig' found. Please install ldns or bind-utils." >&2
+        exit 1
+    fi                                                  }
 imp() {
     local path=$1
     if [ -f $path ]; then
@@ -9,8 +17,21 @@ imp() {
 }
 ### env vars ###
 imp ".env"
+if [[ -n $DDNS_DOMAIN ]]; then
+    check_dns_tools
+    case "$DNS_TOOL" in
+        drill)
+	    IP_ADDRESS=$(drill "$DDNS_DOMAIN" | awk '/^[^;].*IN.*A/ {print $5; exit}')
+            ;;
+        dig)
+	    IP_ADDRESS=$(dig +short "$DDNS_DOMAIN")
+            ;;
+    esac
+    echo -e "set ip: $IP_ADDRESS"
+fi
 imp "version"
 imp "settings"
+
 
 ### imports ###
 
@@ -35,7 +56,6 @@ confirm() {
         [[ $REPLY =~ ^[Yy]$ ]]
     fi
 }
-
 case "$1" in
     init)
         func_init_local
