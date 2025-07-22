@@ -2,14 +2,24 @@
 # env:
 ## IP_ADDRESS,PORT,USERNAME,PRIVATE_KEY
 
-SSH_COMMAND="ssh $USERNAME@$IP_ADDRESS -i $PRIVATE_KEY -p $PORT"
+
 SYNCPASS_VERSION_PATH="~/.syncpass_version"
 PASSWORD_STORE_ZIP_FILENAME_LOCAL=".syncpass_passwordstore_compressed_local.tar.gz"
 PASSWORD_STORE_ZIP_FILENAME_SERVER=".syncpass_passwordstore_compressed_server.tar.gz"
 
+private_func_get_ssh_command() {
+    if [[ -z $PORT ]]; then
+        PORT=22
+    fi
+    echo "ssh $USERNAME@$IP_ADDRESS -i $PRIVATE_KEY -p $PORT"
+}
 private_func_get_scp_command() {
     local path=$1
     local to_send_path=$2
+    if [[ -z $PORT ]]; then
+        PORT=22
+    fi
+
     if [[ -n $to_send_path ]]; then
         echo "scp -P $PORT -i $PRIVATE_KEY $to_send_path $USERNAME@$IP_ADDRESS:$path"
     else
@@ -17,6 +27,7 @@ private_func_get_scp_command() {
     fi
 }
 func_server_setup_syncpass_version() {
+    SSH_COMMAND=$(private_func_get_ssh_command)
     local result=$($SSH_COMMAND "
         if [ -f ${SYNCPASS_VERSION_PATH} ]; then
             echo 'Syncpass version already exists on the server.'
@@ -30,6 +41,7 @@ func_server_setup_syncpass_version() {
 
 # impo
 func_get_server_version() {
+    SSH_COMMAND=$(private_func_get_ssh_command)
     if $SSH_COMMAND "cat $SYNCPASS_VERSION_PATH" | grep "VERSION=" | cut -d'=' -f2; then
         echo $version
     else
@@ -41,6 +53,7 @@ func_get_server_version() {
 # impo
 func_update_server_version() {
     if [[ -n "$1" ]]; then
+        SSH_COMMAND=$(private_func_get_ssh_command)
         if $SSH_COMMAND "echo \"VERSION=$1\" > $SYNCPASS_VERSION_PATH"; then
             print_status "OK" "✓ SSH successful"
         else
@@ -99,6 +112,7 @@ func_get_server_passwordstore() {
     # requirement: settings: C_PATH
     # TODO check if settings exist
 
+    SSH_COMMAND=$(private_func_get_ssh_command)
     if $SSH_COMMAND "[ -f ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER ]"; then
         print_status "OK" "✓ Found compressed password-store on server\n"
         # if $SSH_COMMAND "tar -czf ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER ~/.password-store"; then
