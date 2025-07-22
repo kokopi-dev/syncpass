@@ -146,6 +146,7 @@ case "$1" in
 
                     # pull password-store from server, and unzip
                     func_get_server_passwordstore
+                    func_set_version $server_ver
                 fi
 
                 echo -e ""

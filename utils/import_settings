@@ -8,6 +8,10 @@ func_increment_version() {
     local new_version=$(( curr_ver + 1))
     echo "VERSION=$new_version" > $V_PATH
 }
+func_set_version() {
+    local to_set=$1
+    echo "VERSION=$to_set" > $V_PATH
+}
 func_print_settings() {
     echo "IP Address: $IP_ADDRESS"
     echo "PORT: $PORT"
