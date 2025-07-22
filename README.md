@@ -2,6 +2,12 @@
 pass (https://www.passwordstore.org/) wrapper for syncing .password-store to a server via ssh.
 For personal use, or whoever uses pass and wants to sync it to a server.
 
+## Who is this for
+
+    - If you use `pass` and want to sync it with other machines/devices
+    - You have a VPS, supports both home server with ddns and cloud
+    - You don't use `pass`, but you want 100% no-compromise control over your encrypted passwords, and are willing to use something as archaic as `pass`
+
 ## Requirement
     - `drill (ldns)` or `dig`
     - `pass`
