@@ -137,7 +137,7 @@ case "$1" in
 
                     # backup local .password-store
                     sp_filename="${C_PATH}/.password-store_backup.tar.gz"
-                    if cd $HOME && tar -czf $sp_filename .password-store; then
+                    if cd $HOME && tar --warning=no-timestamp -czf $sp_filename .password-store; then
                         echo -e "✓ Backed up local ~/.password-store to .password-store_backup.tar.gz"
                     else
                         echo -e "✗ tar command for backing up failed."

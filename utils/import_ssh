@@ -67,7 +67,7 @@ func_update_server_passwordstore() {
     # compress local .password-store
     print_status "INFO" ">>> Compressing local .password-store ..."
     local compressed_zip_path="${C_PATH}/$PASSWORD_STORE_ZIP_FILENAME_LOCAL"
-    if cd $HOME && tar -czf $compressed_zip_path .password-store; then
+    if cd $HOME && tar --warning=no-timestamp -czf $compressed_zip_path .password-store; then
         print_status "OK" "✓ Compressed local .password-store to $compressed_zip_path\n"
     else
         print_status "ERROR" "✗ func_update_server_passwordstore: Compressing local .password-store failed."
@@ -122,7 +122,7 @@ func_get_server_passwordstore() {
     fi
 
     # # unzip downloaded
-    if tar -xzf "$C_PATH/$PASSWORD_STORE_ZIP_FILENAME_SERVER"  -C ~/; then
+    if tar --warning=no-timestamp -xzf "$C_PATH/$PASSWORD_STORE_ZIP_FILENAME_SERVER"  -C ~/; then
         print_status "OK" "✓ Successfully synced local .password-store from the server"
     else
         print_status "ERROR" "✗ func_get_server_passwordstore: tar command failed."
