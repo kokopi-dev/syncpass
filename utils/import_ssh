@@ -28,64 +28,102 @@ func_server_setup_syncpass_version() {
     echo $result
 }
 
+# impo
 func_get_server_version() {
-    local version=$($SSH_COMMAND "cat $SYNCPASS_VERSION_PATH" | grep "VERSION=" | cut -d'=' -f2)
-    echo $version
-}
-
-func_update_server_version() {
-    local new_version=$1
-
-    $($SSH_COMMAND "echo \"VERSION=$new_version\" > $SYNCPASS_VERSION_PATH")
-}
-
-func_update_server_passwordstore() {
-    # requirement: C_PATH
-    if [ -d ~/.password-store ]; then
-        printf ">>> Found .password-store, preparing to send to server.\n"
-        # TODO verify env settings
-        printf ">>> Compressing local .password-store ...\n"
-        local compressed_zip_path="${C_PATH}/$PASSWORD_STORE_ZIP_FILENAME_LOCAL"
-        local compressed_zip=$(cd $HOME && tar -czf $compressed_zip_path .password-store)
-        printf ">>> Compressed local .password-store to $compressed_zip_path\n"
-
-        printf ">>> Sending to server ...\n"
-        local scp_command=$(private_func_get_scp_command "~/$PASSWORD_STORE_ZIP_FILENAME_SERVER" "$compressed_zip_path")
-        local send_zip=$($scp_command)
-        stty sane
-        printf ">>> Sent local .password-store\n"
-
-        printf ">>> Updating server's password-store ...\n"
-        $($SSH_COMMAND "mkdir -p ~/.password-store && tar -xzf ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER -C ~/")
-        printf ">>> Finished updating the server's password-store\n"
+    if $SSH_COMMAND "cat $SYNCPASS_VERSION_PATH" | grep "VERSION=" | cut -d'=' -f2; then
+        echo $version
     else
-        printf "> Could not find .password-store, try creating passwords locally first\n"
+        echo -e "✗ ERROR - func_get_server_version: SSH command failed."
+        exit 1
     fi
 }
 
+# impo
+func_update_server_version() {
+    if [[ -n "$1" ]]; then
+        if $SSH_COMMAND "echo \"VERSION=$1\" > $SYNCPASS_VERSION_PATH"; then
+            echo "✓ SSH successful"
+        else
+            echo -e "✗ ERROR - func_update_server_version: SSH command failed."
+            exit 1
+        fi
+    else
+        echo -e "✗ ERROR - func_update_server_version: Version arguement required."
+        exit 1
+    fi
+}
+
+# impo
+func_update_server_passwordstore() {
+    # requirement: C_PATH
+    # TODO verify env settings
+    if [ -d ~/.password-store ]; then
+        echo -e ">>> Found .password-store, preparing to send to server."
+    else
+        echo -e "> Could not find .password-store, try creating passwords locally first"
+        exit 1
+    fi
+
+    # compress local .password-store
+    echo -e ">>> Compressing local .password-store ..."
+    local compressed_zip_path="${C_PATH}/$PASSWORD_STORE_ZIP_FILENAME_LOCAL"
+    if cd $HOME && tar -czf $compressed_zip_path .password-store; then
+        echo -e "✓ Compressed local .password-store to $compressed_zip_path\n"
+    else
+        echo -e "✗ ERROR - func_update_server_passwordstore: Compressing local .password-store failed."
+        exit 1
+    fi
+
+    # send compressed local to server
+    if $(private_func_get_scp_command "~/${PASSWORD_STORE_ZIP_FILENAME_SERVER}" $compressed_zip_path); then
+        echo -e "\n✓ Sent local .password-store to the server"
+    else
+        echo -e "✗ ERROR - func_update_server_passwordstore: SCP command failed."
+        exit 1
+    fi
+
+    stty sane
+
+    # # decompress sent local on the server
+    # if $SSH_COMMAND "mkdir -p ~/.password-store && tar -xzf ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER -C ~/"; then
+    #     echo -e "✓ Successfully synced local .password-store to the server"
+    # else
+    #     echo -e "✗ ERROR - func_update_server_passwordstore: SCP command failed."
+    #     exit 1
+    # fi
+}
+
+#impo
 func_get_server_passwordstore() {
     # requirement: settings: C_PATH
     # TODO check if settings exist
 
-    # 0 = has password store
-    local password_store_exists=$($SSH_COMMAND "
-        if [ -d ~/.password-store ]; then
-            return 0
-        else
-            return 1
-        fi
-    ")
-
-    if [[ $password_store_exists -eq 1 ]]; then
-        echo "> .password-store does not exist on the server, try uploading passwords first"
+    if $SSH_COMMAND "[ -f ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER ]"; then
+        echo -e "✓ Found .password-store copy on server\n"
+        # if $SSH_COMMAND "tar -czf ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER ~/.password-store"; then
+        #     echo -e "✓ Compressed .password-store on server\n"
+        # else
+        #     echo -e "✗ ERROR - func_get_server_passwordstore: SSH command failed."
+        #     exit 1
+        # fi
+    else
+        echo "✗ .password-store does not exist on the server, try uploading passwords first"
         exit 1
     fi
 
-    # this will overwrite the current version
-    local zip_pass=$($SSH_COMMAND "tar -czf ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER ~/.password-store")
-    # TODO confirm success
-    
-    local download_pass_command=$(private_func_get_scp_command "~/${PASSWORD_STORE_ZIP_FILENAME_SERVER}")
-    local download_pass=$($download_pass_command $C_PATH)
-    # TODO confirm success
+    # download server's password store on local
+    if $(private_func_get_scp_command "~/${PASSWORD_STORE_ZIP_FILENAME_SERVER}") $C_PATH; then
+        echo -e "\n✓ Downloaded .password-store from server -> $PASSWORD_STORE_ZIP_FILENAME_SERVER"
+    else
+        echo -e "✗ ERROR - func_get_server_passwordstore: SCP command failed."
+        exit 1
+    fi
+
+    # # unzip downloaded
+    if tar -xzf "$C_PATH/$PASSWORD_STORE_ZIP_FILENAME_SERVER"  -C ~/; then
+        echo -e "✓ Successfully synced local .password-store from the server"
+    else
+        echo -e "✗ ERROR - func_get_server_passwordstore: tar command failed."
+        exit 1
+    fi
 }

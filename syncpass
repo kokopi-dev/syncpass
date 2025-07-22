@@ -24,37 +24,19 @@ imp "./utils/import_settings"
 imp "./utils/import_ssh"
 
 
-versions_are_unsynced() {
-    # 0 = needs update
-    local server_ver=$(func_get_server_version)
-    if [[ $server_ver -eq $V ]]; then
-        return 1
+confirm() {
+    if [[ -n "$1" ]]; then
+        read -p "$1 (y/n): " -n 1 -r
+        echo    # Move to new line
+        [[ $REPLY =~ ^[Yy]$ ]]
     else
-        return 0
+        read -p "Are you sure? (y/n): " -n 1 -r
+        echo    # Move to new line
+        [[ $REPLY =~ ^[Yy]$ ]]
     fi
 }
 
 case "$1" in
-    add|edit)
-        # pull server version to see if update is needed
-        # push version update to server
-        echo -e "found add/edit\n"
-        pass $@ 2>&1
-        exit_code=$?
-
-        if [ $exit_code -eq 0 ]; then
-            echo -e "add/edit success\n"
-            func_increment_version
-            func_update_server_passwordstore
-
-            curr_ver=$(func_get_local_version)
-            func_update_server_version $curr_ver
-        else
-            echo -e "add/edit failed\n"
-        fi
-        ;;
-    test)
-        ;;
     init)
         func_init_local
         server_home_path=$(func_get_server_home_path)
@@ -65,21 +47,126 @@ case "$1" in
         # back it up in current directory
         ;;
     *)
+        ;;
+esac
+
+# settings check, return 1 if no settings avail
+
+case "$1" in
+    add|edit|generate|rm)
+        # push new version to server after command is finished running
+        if pass $@; then
+            func_increment_version
+            echo -e "✓ Local version updated"
+
+            # update server's passwordstore
+            func_update_server_passwordstore
+
+            # update server's version
+            curr_ver=$(func_get_local_version)
+            func_update_server_version $curr_ver
+            echo -e "✓ Server version updated"
+        else
+            echo -e "✗ pass command failed."
+        fi
+        ;;
+    inject)
+        func_update_server_passwordstore
+        ;;
+    help)
+        func_print_settings
+        ;;
+    *)
+        args=("$@")
+        first_non_flag=""
+        
+        for arg in "${args[@]}"; do
+            if [[ "$arg" != -* ]]; then
+                first_non_flag="$arg"
+                break
+            fi
+        done
+
+        case "$first_non_flag" in
+            ls|find|grep|insert|edit|generate|rm|mv|cp|git) return 1 ;;
+            "") 
+                echo -e "✗ Syncpass could not determine the pass command."
+                exit 1
+                ;;
+            *)
+                ## Probably trying to get password
+                ### Sync server and local before running pass
+
+                server_ver=$(func_get_server_version)
+
+                echo "✓ SSH successful"
+
+                if (( server_ver == VERSION )); then
+                    echo -e "✓ Syncpass versions on server and local are synced."
+                elif (( server_ver < VERSION ));then
+                    echo -e ">>> WARNING: Local version is ahead of server"
+                    echo -e ">>> Recommending to run 'syncpass sync'"
+                else
+                    echo -e "✗ Local .password-store is behind server, preparing to update"
+                    if confirm "> Are you sure you want to overwrite/update your local .password-store with the one from the server?"; then
+                        echo -e ">>> Preparing to update your local password-store ..."
+                    else
+                        echo -e "> Exiting syncpass, no changes have been made."
+                        exit 1
+                    fi
+
+                    # backup local .password-store
+                    sp_filename="${C_PATH}/.password-store_backup.tar.gz"
+                    if cd $HOME && tar -czf $sp_filename .password-store; then
+                        echo -e "✓ Backed up local ~/.password-store to .password-store_backup.tar.gz"
+                    else
+                        echo -e "✗ tar command for backing up failed."
+                        exit 1
+                    fi
+
+                    # pull password-store from server
+                    func_get_server_passwordstore
+
+                    # unzip it to local
+                fi
+
+                pass $@ 2>&1
+                exit_code=$?
+
+                if [ $exit_code -ne 0 ]; then
+                    echo -e "✗ pass command failed."
+                fi
+                exit 0
+                ;;
+        esac
+
         if [[ -n "$1" ]]; then
             folder=$1
 
-            local needs_update=$(versions_are_unsynced)
-            if [[ $needs_update -eq 0 ]]; then
+            server_ver=$(func_get_server_version)
+
+            if (( server_ver == VERSION )); then
+                echo -e ">>> Syncpass versions on server and local are synced. \n"
+            elif (( server_ver < VERSION ));then
+                echo -e ">>> Local version is ahead of server \n"
                 echo -e ">>> Syncpass versions on server and local are unsynced, updating ...\n"
             else
-                echo -e ">>> Syncpass Versions on server and local are synced. \n"
+                echo -e ">>> Local version is behind server, preparing to update ...\n"
+                # backup local to a _backup_timestamp.tar.gz
+                sp_filename="${C_PATH}/.password-store_backup.tar.gz"
+                compressed_zip=$(cd $HOME && tar -czf $sp_filename .password-store)
+                echo -e ">>> Backed up local ~/.password-store to .password-store_backup.tar.gz"
             fi
-            local password=$(pass show $folder)
-            # pull version to update if there is change if result is success
-            echo $password
-            exit 0
+
+            if password=$(pass show "$folder" 2>/dev/null); then
+                echo $password
+            else
+                echo -e "> Failed to retrieve password for '$folder'"
+                exit 1
+            fi
+
+        elif [ $# -eq 0 ]; then
+            pass
         fi
-        func_print_settings
-        echo "Show help commands"
         ;;
 esac
