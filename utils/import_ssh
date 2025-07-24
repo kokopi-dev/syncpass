@@ -2,10 +2,11 @@
 # env:
 ## IP_ADDRESS,PORT,USERNAME,PRIVATE_KEY
 
-
 SYNCPASS_VERSION_PATH="~/.syncpass_version"
 PASSWORD_STORE_ZIP_FILENAME_LOCAL=".syncpass_passwordstore_compressed_local.tar.gz"
 PASSWORD_STORE_ZIP_FILENAME_SERVER=".syncpass_passwordstore_compressed_server.tar.gz"
+GPG_PUBLIC_KEY_FILENAME="public-key.asc"
+GPG_PRIVATE_KEY_FILENAME="private-key.asc"
 
 # split off this file into password-store and gpg key related functions
 private_func_get_ssh_command() {
@@ -14,21 +15,30 @@ private_func_get_ssh_command() {
     fi
     echo "ssh $USERNAME@$IP_ADDRESS -i $PRIVATE_KEY -p $PORT"
 }
-private_func_get_scp_command() {
-    # sending to server: 2 args dest, source
-    # getting from server: 1 arg dest
-    local path=$1
-    local to_send_path=$2
+
+private_func_send_scp_command() {
+    local server_path=$1
+    local local_source=$2
     if [[ -z $PORT ]]; then
         PORT=22
     fi
 
-    if [[ -n $to_send_path ]]; then
-        # sending to the server
-        echo "scp -P $PORT -i $PRIVATE_KEY $to_send_path $USERNAME@$IP_ADDRESS:$path"
+    echo "scp -i $PRIVATE_KEY -P $PORT $local_source $USERNAME@$IP_ADDRESS:$server_path"
+}
+
+private_func_retrieve_scp_command() {
+    local server_path=$1
+    local dest=$2
+        
+    if [[ -z $PORT ]]; then
+        PORT=22
+    fi
+
+    # specified destination on local
+    if [[ -n $dest ]]; then
+        echo "scp -i $PRIVATE_KEY -P $PORT $USERNAME@$IP_ADDRESS:$server_path $dest"
     else
-        # getting from the server
-        echo "scp -i $PRIVATE_KEY -P $PORT $USERNAME@$IP_ADDRESS:$path"
+        echo "scp -i $PRIVATE_KEY -P $PORT $USERNAME@$IP_ADDRESS:$server_path"
     fi
 }
 
@@ -45,7 +55,6 @@ func_server_setup_syncpass_version() {
     echo $result
 }
 
-# impo
 func_get_server_version() {
     SSH_COMMAND=$(private_func_get_ssh_command)
     if $SSH_COMMAND "cat $SYNCPASS_VERSION_PATH" | grep "VERSION=" | cut -d'=' -f2; then
@@ -56,7 +65,6 @@ func_get_server_version() {
     fi
 }
 
-# impo
 func_update_server_version() {
     if [[ -n "$1" ]]; then
         SSH_COMMAND=$(private_func_get_ssh_command)
@@ -72,7 +80,6 @@ func_update_server_version() {
     fi
 }
 
-# impo
 func_update_server_passwordstore() {
     # requirement: C_PATH
     # TODO verify env settings
@@ -94,7 +101,7 @@ func_update_server_passwordstore() {
     fi
 
     # send compressed local to server
-    if $(private_func_get_scp_command "~/${PASSWORD_STORE_ZIP_FILENAME_SERVER}" $compressed_zip_path); then
+    if $(private_func_send_scp_command "~/${PASSWORD_STORE_ZIP_FILENAME_SERVER}" $compressed_zip_path); then
         echo -e ""
         print_status "OK" "✓ Sent local .password-store to the server"
     else
@@ -103,17 +110,8 @@ func_update_server_passwordstore() {
     fi
 
     stty sane
-
-    # # decompress sent local on the server
-    # if $SSH_COMMAND "mkdir -p ~/.password-store && tar -xzf ~/$PASSWORD_STORE_ZIP_FILENAME_SERVER -C ~/"; then
-    #     echo -e "✓ Successfully synced local .password-store to the server"
-    # else
-    #     echo -e "✗ ERROR - func_update_server_passwordstore: SCP command failed."
-    #     exit 1
-    # fi
 }
 
-#impo
 func_get_server_passwordstore() {
     # requirement: settings: C_PATH
     # TODO check if settings exist
@@ -127,7 +125,7 @@ func_get_server_passwordstore() {
     fi
 
     # download server's password store on local
-    if $(private_func_get_scp_command "~/${PASSWORD_STORE_ZIP_FILENAME_SERVER}") $C_PATH; then
+    if $(private_func_retrieve_scp_command "~/${PASSWORD_STORE_ZIP_FILENAME_SERVER}" "$C_PATH"); then
         echo -e ""
         print_status "OK" "✓ Downloaded .password-store from server -> $PASSWORD_STORE_ZIP_FILENAME_SERVER"
     else
@@ -165,7 +163,7 @@ func_send_gpg_key() {
     gpg --export-secret-keys --armor "$gpg_key_id" > "$private_path"
     gpg --export --armor "$gpg_key_id" > "$public_path"
 
-    if $(private_func_get_scp_command "~/" "$C_PATH/*.asc"); then
+    if $(private_func_send_scp_command "~/" "$C_PATH/*.asc"); then
         print_status "OK" "✓ GPG keys uploaded successfully"
     else
         print_status "ERROR" "✗ func_send_gpg_key: scp failed to send gpg keys"
@@ -176,6 +174,22 @@ func_send_gpg_key() {
     rm "$C_PATH/*.asc"
 }
 
-# func_get_gpg_key() {
-#
-# }
+func_get_gpg_key() {
+    if $SSH_COMMAND "[ -f ~/$GPG_PUBLIC_KEY_FILENAME ] && [ -f ~/$GPG_PRIVATE_KEY_FILENAME ]"; then
+        print_status "OK" "✓ Removed gpg keys from the server"
+    fi
+}
+
+func_remove_gpg_key() {
+    if $SSH_COMMAND "[ -f ~/$GPG_PUBLIC_KEY_FILENAME ] && [ -f ~/$GPG_PRIVATE_KEY_FILENAME ]"; then
+        if $SSH_COMMAND "rm ~/$GPG_PUBLIC_KEY_FILENAME ~/$GPG_PRIVATE_KEY_FILENAME"; then
+            print_status "OK" "✓ Removed gpg keys from the server"
+        else
+            print_status "ERROR" "✗ Could not remove gpg keys from the server"
+            exit 1
+        fi
+    else
+        print_status "ERROR" "✗ Could not find gpg keys on the server"
+        exit 1
+    fi
+}
