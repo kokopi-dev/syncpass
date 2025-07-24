@@ -59,6 +59,25 @@ esac
 # settings check, return 1 if no settings avail
 
 case "$1" in
+    gpg)
+        case "$2" in
+            add)
+                func_send_gpg_key $3
+                exit 0
+                ;;
+            remove)
+                func_remove_gpg_key
+                exit 0
+                ;;
+            get)
+                func_get_gpg_key
+                exit 0
+                ;;
+            *)
+                echo -e "> Commands for gpg are add, remove, and get"
+                ;;
+        esac
+        ;;
     diff)
         # TODO implement a way to diff the current and server versions
         exit 1

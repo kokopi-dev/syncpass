@@ -13,4 +13,6 @@ imp "settings"
 imp "version"
 imp "./utils/import_ssh"
 
-printf "hello world\n something"
+if [ -f "private-key.asc" ]; then
+    echo "here"
+fi

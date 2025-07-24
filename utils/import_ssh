@@ -151,37 +151,49 @@ func_get_server_passwordstore() {
 
 func_send_gpg_key() {
     local gpg_key_id=$1
-    if ! gpg --list-secret-keys "$key_id" &>/dev/null; then
+    if !(gpg --list-keys $key_id | grep -q "$key_id"); then
         print_status "ERROR" "✗ gpg key id was not found: $gpg_key_id"
         echo -e "> Available secret keys:"
-        gpg --list-secret-keys --keyid-format LONG | grep -E "(sec|uid)"
+        gpg --list-keys | awk '
+/^pub/ { getline; keyid=$1; gsub(/^[[:space:]]+/, "", keyid); getline; gsub(/^uid[[:space:]]*\[[^\]]*\][[:space:]]*/, ""); print keyid " - " $0 }'
         exit 1
     fi
 
-    local private_path = "$C_PATH/private-key.asc"
-    local public_path = "$C_PATH/public-key.asc"
+    local private_path="$C_PATH/private-key.asc"
+    local public_path="$C_PATH/public-key.asc"
     gpg --export-secret-keys --armor "$gpg_key_id" > "$private_path"
     gpg --export --armor "$gpg_key_id" > "$public_path"
 
     if $(private_func_send_scp_command "~/" "$C_PATH/*.asc"); then
         print_status "OK" "✓ GPG keys uploaded successfully"
+        rm "$C_PATH/private-key.asc"
+        rm "$C_PATH/public-key.asc"
     else
         print_status "ERROR" "✗ func_send_gpg_key: scp failed to send gpg keys"
-        rm "$C_PATH/*.asc"
+        rm "$C_PATH/private-key.asc"
+        rm "$C_PATH/public-key.asc"
         exit 1
     fi
-
-    rm "$C_PATH/*.asc"
 }
 
 func_get_gpg_key() {
+    SSH_COMMAND=$(private_func_get_ssh_command)
     if $SSH_COMMAND "[ -f ~/$GPG_PUBLIC_KEY_FILENAME ] && [ -f ~/$GPG_PRIVATE_KEY_FILENAME ]"; then
-        print_status "OK" "✓ Removed gpg keys from the server"
+        if $(private_func_retrieve_scp_command "~/*.asc" "$C_PATH"); then
+            print_status "OK" "✓ Retrieved gpg keys from the server"
+        else
+            print_status "ERROR" "✗ Could not get gpg keys from the server"
+            exit 1
+        fi
+    else
+        print_status "ERROR" "✗ Could not find gpg keys on the server"
+        exit 1
     fi
 }
 
 func_remove_gpg_key() {
-    if $SSH_COMMAND "[ -f ~/$GPG_PUBLIC_KEY_FILENAME ] && [ -f ~/$GPG_PRIVATE_KEY_FILENAME ]"; then
+    SSH_COMMAND=$(private_func_get_ssh_command)
+    if ($SSH_COMMAND "[ -f ~/$GPG_PUBLIC_KEY_FILENAME ] && [ -f ~/$GPG_PRIVATE_KEY_FILENAME ]"); then
         if $SSH_COMMAND "rm ~/$GPG_PUBLIC_KEY_FILENAME ~/$GPG_PRIVATE_KEY_FILENAME"; then
             print_status "OK" "✓ Removed gpg keys from the server"
         else
