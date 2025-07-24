@@ -32,12 +32,16 @@ private_func_init_bashrc() {
     local exec_path=$1
     local command_name=$2
 
-    if grep -q "alias.*$command_name" ~/.bashrc 2>/dev/null; then
+    if grep -q "^$command_name()" ~/.bashrc 2>/dev/null; then
         echo "Alias $command_name already exists in bashrc"
     else
         echo "+++ Setting up alias: $command_name in ~/.bashrc"
-        echo $exec_path >> ~/.bashrc
-        echo ">>> Run 'source ~/.bashrc'"
+        cat >> ~/.bashrc << EOF
+$command_name() {
+    ($exec_path "\$@")
+}
+EOF
+        echo ">>> Run 'exec \$SHELL' or 'source ~/.bashrc'"
     fi
 }
 private_func_check_env() {
@@ -56,7 +60,7 @@ private_func_check_env() {
 
 func_init_local() {
     CURRENT_PATH=$(pwd)
-    EXEC_PATH="alias pass='cd ${CURRENT_PATH} && bash ${CURRENT_PATH}/syncpass'"
+    EXEC_PATH="cd ${CURRENT_PATH} && bash ${CURRENT_PATH}/syncpass"
 
     private_func_check_env
     private_func_init_base

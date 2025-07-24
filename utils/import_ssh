@@ -7,6 +7,7 @@ SYNCPASS_VERSION_PATH="~/.syncpass_version"
 PASSWORD_STORE_ZIP_FILENAME_LOCAL=".syncpass_passwordstore_compressed_local.tar.gz"
 PASSWORD_STORE_ZIP_FILENAME_SERVER=".syncpass_passwordstore_compressed_server.tar.gz"
 
+# split off this file into password-store and gpg key related functions
 private_func_get_ssh_command() {
     if [[ -z $PORT ]]; then
         PORT=22
@@ -14,6 +15,8 @@ private_func_get_ssh_command() {
     echo "ssh $USERNAME@$IP_ADDRESS -i $PRIVATE_KEY -p $PORT"
 }
 private_func_get_scp_command() {
+    # sending to server: 2 args dest, source
+    # getting from server: 1 arg dest
     local path=$1
     local to_send_path=$2
     if [[ -z $PORT ]]; then
@@ -21,11 +24,14 @@ private_func_get_scp_command() {
     fi
 
     if [[ -n $to_send_path ]]; then
+        # sending to the server
         echo "scp -P $PORT -i $PRIVATE_KEY $to_send_path $USERNAME@$IP_ADDRESS:$path"
     else
+        # getting from the server
         echo "scp -i $PRIVATE_KEY -P $PORT $USERNAME@$IP_ADDRESS:$path"
     fi
 }
+
 func_server_setup_syncpass_version() {
     SSH_COMMAND=$(private_func_get_ssh_command)
     local result=$($SSH_COMMAND "
@@ -144,3 +150,32 @@ func_get_server_passwordstore() {
         exit 1
     fi
 }
+
+func_send_gpg_key() {
+    local gpg_key_id=$1
+    if ! gpg --list-secret-keys "$key_id" &>/dev/null; then
+        print_status "ERROR" "✗ gpg key id was not found: $gpg_key_id"
+        echo -e "> Available secret keys:"
+        gpg --list-secret-keys --keyid-format LONG | grep -E "(sec|uid)"
+        exit 1
+    fi
+
+    local private_path = "$C_PATH/private-key.asc"
+    local public_path = "$C_PATH/public-key.asc"
+    gpg --export-secret-keys --armor "$gpg_key_id" > "$private_path"
+    gpg --export --armor "$gpg_key_id" > "$public_path"
+
+    if $(private_func_get_scp_command "~/" "$C_PATH/*.asc"); then
+        print_status "OK" "✓ GPG keys uploaded successfully"
+    else
+        print_status "ERROR" "✗ func_send_gpg_key: scp failed to send gpg keys"
+        rm "$C_PATH/*.asc"
+        exit 1
+    fi
+
+    rm "$C_PATH/*.asc"
+}
+
+# func_get_gpg_key() {
+#
+# }
