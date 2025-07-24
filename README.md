@@ -2,32 +2,51 @@
 pass (https://www.passwordstore.org/) wrapper for syncing .password-store to a server via ssh.
 For personal use, or whoever uses pass and wants to sync it to a server.
 
+---
+
 ## Who is this for
 
-    - If you use `pass` and want to sync it with other machines/devices
-    - You have a VPS, supports both home server with ddns and cloud
-    - You don't use `pass`, but you want 100% no-compromise control over your encrypted passwords, and are willing to use something as archaic as `pass`
+* If you use `pass` and want to sync it with other machines/devices
+* You have a VPS, supports both home server with ddns and cloud
+* You don't use `pass`, but you want 100% no-compromise control over your encrypted passwords, and are willing to use something as archaic as `pass`
+
+---
 
 ## Requirement
-    - `drill (ldns)` or `dig`
-    - `pass`
+
+* `drill (ldns)` or `dig`
+* `pass`
+
+---
 
 ## Setup Local
+
+### Env file setup
 .env needs file:
 
-    - IP_ADDRESS (server's ip OR ddns, it will auto resolve)
-    - USERNAME (server's user you want to access)
-    - PORT
-    - PRIVATE_KEY
+* IP_ADDRESS (server's ip OR ddns, it will auto resolve)
+* USERNAME (server's user you want to access)
+* PORT
+* PRIVATE_KEY
+
+### Initialize syncpass setup
 
 Run `./syncpass init`
-    - Add `u+x` permissions if it doesnt run, or use `bash syncpass`
+* Add `u+x` permissions if it doesnt run, or use `bash syncpass`
+* Run `pass update` if you want to force get the password-store from the server on the current machine/device
 
-## Setup Server
+### Setup GPG keys
 
+Can use current gpg keys or make new ones. Then use the `gpg get` on all your machines/devices to import your keys for your synced password-store passwords, if you have gpg keys uploaded to the server:
+
+* `pass gpg add KEY_ID`: this pushes your gpg keys to the server
+* `pass gpg remove`: this deletes your current gpg keys from the server
+* `pass gpg get`: this gets your gpg keys from the server
+
+---
 
 ## Overview
-- You have your main `~/.password-store` locally
-- Make a file `.env` in this project root, and setup the required variables from above
-- Run `syncpass init`
-- It will ask to upload your current local `~/.password-store` to your server settings from .env
+
+* You have your main `~/.password-store` locally
+* Setup the `.env` file, this needs to be done manually on each machine/device
+* Use `pass` normally. Everytime you edit the .password-store folder, or try to get a password, syncpass will try to sync the local .password-store folder with the master one from the server.
