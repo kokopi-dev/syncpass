@@ -1,6 +1,6 @@
 .env
-version
-settings
+.version
+.settings
 update_syncpass
 
 *.tar.gz

@@ -2,9 +2,9 @@
 private_func_init_base() {
     CURRENT_PATH=$(pwd)
     CURRENT_PATH_SETTING="C_PATH=${CURRENT_PATH}"
-    VERSION_PATH="${CURRENT_PATH}/version"
+    VERSION_PATH="${CURRENT_PATH}/.version"
     VERSION_PATH_SETTING="V_PATH=${VERSION_PATH}"
-    SETTINGS_PATH="${CURRENT_PATH}/settings"
+    SETTINGS_PATH="${CURRENT_PATH}/.settings"
     if [ -f settings ]; then
         echo "Settings file already exists"
     else

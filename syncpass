@@ -10,7 +10,7 @@ imp() {
 ### env vars ###
 imp ".env"
 imp "version"
-imp "settings"
+imp ".settings"
 
 
 ### imports ###
@@ -60,6 +60,7 @@ esac
 
 case "$1" in
     gpg)
+        func_ddns_check
         case "$2" in
             add)
                 func_send_gpg_key $3
