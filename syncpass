@@ -9,7 +9,7 @@ imp() {
 }
 ### env vars ###
 imp ".env"
-imp "version"
+imp ".version"
 imp ".settings"
 
 
@@ -26,6 +26,8 @@ imp "./utils/import_settings"
 imp "./utils/import_ssh"
 
 imp "./utils/import_ddns_check"
+
+imp "./utils/import_search"
 
 confirm() {
     if [[ -n "$1" ]]; then
@@ -59,10 +61,17 @@ esac
 # settings check, return 1 if no settings avail
 
 case "$1" in
+    search)
+        func_search_password $2
+        ;;
     gpg)
         func_ddns_check
         case "$2" in
             add)
+                if [ -z "$3" ]; then
+                    print_status "ERROR" "✗ GPG key id required."
+                    exit 1
+                fi
                 func_send_gpg_key $3
                 exit 0
                 ;;
@@ -143,6 +152,7 @@ case "$1" in
 
                 print_status "OK" "✓ SSH successful"
 
+                echo -e "test: server $server_ver current $VERSION"
                 if (( server_ver == VERSION )); then
                     print_status "INFO" "✓ Syncpass versions on server and local are synced."
                 elif (( server_ver < VERSION ));then

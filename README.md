@@ -45,8 +45,18 @@ Can use current gpg keys or make new ones. Then use the `gpg get` on all your ma
 
 ---
 
+## Non-native pass Commands
+
+* `update`: Force update from server to local, this bypasses version checking
+* `gpg`: `add $gpg_id | remove | get` Currently can store only 1 set of keys on the server
+* `search`: Searches exact name for root files + subfolders, then partial searches
+* `init`: Initializes syncpass, needs to run in project root
+
+---
+
 ## Overview
 
 * You have your main `~/.password-store` locally
 * Setup the `.env` file, this needs to be done manually on each machine/device
 * Use `pass` normally. Everytime you edit the .password-store folder, or try to get a password, syncpass will try to sync the local .password-store folder with the master one from the server.
+
