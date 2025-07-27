@@ -3,5 +3,8 @@
 .settings
 update_syncpass
 
+public-key.asc
+private-key.asc
+
 *.tar.gz
 
