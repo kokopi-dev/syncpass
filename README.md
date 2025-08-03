@@ -14,7 +14,7 @@ For personal use, or whoever uses pass and wants to sync it to a server.
 
 ## Requirement
 
-* `drill (ldns)` or `dig`
+* `drill (ldns)` or `dig` (if your .env is using ddns instead of ip)
 * `pass`
 
 ---

@@ -1,0 +1,44 @@
+#!/bin/bash
+func_detect_environment() {
+    # Check for Termux (Android)
+    if [[ -n "$TERMUX_VERSION" ]] || [[ -d "/data/data/com.termux" ]] || [[ "$PREFIX" == *"com.termux"* ]]; then
+        echo "termux"
+        return 0
+    fi
+    
+    # Check for WSL
+    if [[ -f "/proc/version" ]]; then
+        if grep -qi "microsoft\|wsl" /proc/version 2>/dev/null; then
+            echo "wsl"
+            return 0
+        fi
+    fi
+    
+    # Additional WSL checks
+    if [[ -n "$WSL_DISTRO_NAME" ]] || [[ -n "$WSLENV" ]]; then
+        echo "wsl"
+        return 0
+    fi
+    
+    # Check if we're on Windows with WSL mount points
+    if [[ -d "/mnt/c" ]] && [[ -f "/proc/version" ]]; then
+        echo "wsl"
+        return 0
+    fi
+    
+    # Check for regular Linux
+    if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ -f "/etc/os-release" ]]; then
+        echo "linux"
+        return 0
+    fi
+    
+    # Fallback: if we have /proc/version but none of the above matched
+    if [[ -f "/proc/version" ]]; then
+        echo "linux"
+        return 0
+    fi
+    
+    # If nothing matches
+    echo "unknown"
+    return 1
+}

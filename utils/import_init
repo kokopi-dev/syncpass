@@ -5,7 +5,7 @@ private_func_init_base() {
     VERSION_PATH="${CURRENT_PATH}/.version"
     VERSION_PATH_SETTING="V_PATH=${VERSION_PATH}"
     SETTINGS_PATH="${CURRENT_PATH}/.settings"
-    if [ -f settings ]; then
+    if [ -f ".settings" ]; then
         echo "Settings file already exists"
     else
         echo $VERSION_PATH_SETTING >> $SETTINGS_PATH
@@ -13,7 +13,7 @@ private_func_init_base() {
         echo "+ Created settings file"
     fi
 
-    if [ -f version ]; then
+    if [ -f ".version" ]; then
         echo "Version file already exists"
     else
         echo "VERSION=1" > $VERSION_PATH
@@ -32,8 +32,9 @@ private_func_init_bashrc() {
     local exec_path=$1
     local command_name=$2
 
+
     if grep -q "^$command_name()" ~/.bashrc 2>/dev/null; then
-        echo "Alias $command_name already exists in bashrc"
+        echo "> Alias $command_name already exists in bashrc"
     else
         echo "+++ Setting up alias: $command_name in ~/.bashrc"
         cat >> ~/.bashrc << EOF
@@ -41,8 +42,21 @@ $command_name() {
     ($exec_path "\$@")
 }
 EOF
-        echo ">>> Run 'exec \$SHELL' or 'source ~/.bashrc'"
     fi
+
+    if grep -q "PASSWORD_STORE_EXTENSION_COMMANDS" ~/.bashrc 2>/dev/null; then
+        echo "> Custom copy autocomplete already exists"
+    else
+        echo "+++ Setting up custom copy autocomplete in ~/.bashrc"
+        cat >> ~/.bashrc << EOF
+export PASSWORD_STORE_EXTENSION_COMMANDS=("c")
+__password_store_extension_complete_c() {
+    COMPREPLY+=(\$(compgen -W "-o --option" -- \${cur}))
+    _pass_complete_entries 1
+}
+EOF
+    fi
+    echo ">>> Run 'exec \$SHELL' or 'source ~/.bashrc'"
 }
 private_func_check_env() {
     echo ""

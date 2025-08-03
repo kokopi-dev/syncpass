@@ -1,7 +1,7 @@
 #!/bin/bash
 imp() {
     local path=$1
-    if [ -f $path ]; then
+    if [ -f "$path" ]; then
         set -a
         source $path
         set +a
@@ -28,6 +28,8 @@ imp "./utils/import_ssh"
 imp "./utils/import_ddns_check"
 
 imp "./utils/import_search"
+
+imp "./utils/import_os_helpers"
 
 confirm() {
     if [[ -n "$1" ]]; then
@@ -117,10 +119,6 @@ case "$1" in
             print_status "ERROR" "✗ pass command failed."
         fi
         ;;
-    inject)
-        func_ddns_check
-        func_update_server_passwordstore
-        ;;
     help)
         func_print_settings
         ;;
@@ -152,9 +150,8 @@ case "$1" in
 
                 print_status "OK" "✓ SSH successful"
 
-                echo -e "test: server $server_ver current $VERSION"
                 if (( server_ver == VERSION )); then
-                    print_status "INFO" "✓ Syncpass versions on server and local are synced."
+                    print_status "INFO" "✓ Syncpass versions on server:$server_ver and local:$VERSION are synced."
                 elif (( server_ver < VERSION ));then
                     print_status "INFO" ">>> WARNING: Local version is ahead of server"
                     print_status "INFO" ">>> Recommending to run 'syncpass sync'"
@@ -182,7 +179,24 @@ case "$1" in
                 fi
 
                 echo -e ""
-                command pass $@ 2>&1
+
+                if [[ "$first_non_flag" == "c" ]]; then
+                    if [[ -n "$TERMUX_VERSION" ]] || [[ -d "/data/data/com.termux" ]]; then
+                        echo "termux"
+                    elif [[ -f "/proc/version" ]] && grep -qi "microsoft\|wsl" /proc/version 2>/dev/null; then
+                        command pass ${@:2} | clip.exe
+                    elif [[ -n "$WSL_DISTRO_NAME" ]] || [[ -n "$WSLENV" ]]; then
+                        command pass ${@:2} | clip.exe
+                    elif [[ "$OSTYPE" == "linux-gnu"* ]] || [[ -f "/etc/os-release" ]]; then
+                        command pass -c ${@:2}
+                    else
+                        echo "✗ Unknown Device: Cannot use syncpass."
+                        exit 1
+                    fi
+                else
+                    command pass $@ 2>&1
+                fi
+
                 exit_code=$?
 
                 if [ $exit_code -ne 0 ]; then
@@ -191,34 +205,4 @@ case "$1" in
                 exit 0
                 ;;
         esac
-
-        # if [[ -n "$1" ]]; then
-        #     folder=$1
-        #
-        #     server_ver=$(func_get_server_version)
-        #
-        #     if (( server_ver == VERSION )); then
-        #         echo -e ">>> Syncpass versions on server and local are synced. \n"
-        #     elif (( server_ver < VERSION ));then
-        #         echo -e ">>> Local version is ahead of server \n"
-        #         echo -e ">>> Syncpass versions on server and local are unsynced, updating ...\n"
-        #     else
-        #         echo -e ">>> Local version is behind server, preparing to update ...\n"
-        #         # backup local to a _backup_timestamp.tar.gz
-        #         sp_filename="${C_PATH}/.password-store_backup.tar.gz"
-        #         compressed_zip=$(cd $HOME && tar -czf $sp_filename .password-store)
-        #         echo -e ">>> Backed up local ~/.password-store to .password-store_backup.tar.gz"
-        #     fi
-        #
-        #     if password=$(pass show "$folder" 2>/dev/null); then
-        #         echo $password
-        #     else
-        #         echo -e "> Failed to retrieve password for '$folder'"
-        #         exit 1
-        #     fi
-        #
-        # elif [ $# -eq 0 ]; then
-        #     pass
-        # fi
-        # ;;
 esac
