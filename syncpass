@@ -189,9 +189,11 @@ case "$1" in
 			    exit 1
 			fi
                     elif [[ -f "/proc/version" ]] && grep -qi "microsoft\|wsl" /proc/version 2>/dev/null; then
-                        command pass ${@:2} | clip.exe
+			password=$(command pass ${@:2})
+                        echo "$password" | tail -n 1 | clip.exe
                     elif [[ -n "$WSL_DISTRO_NAME" ]] || [[ -n "$WSLENV" ]]; then
-                        command pass ${@:2} | clip.exe
+			password=$(command pass ${@:2})
+                        echo "$password" | tail -n 1 | clip.exe
                     elif [[ "$OSTYPE" == "linux-gnu"* ]] || [[ -f "/etc/os-release" ]]; then
                         command pass -c ${@:2}
                     else
