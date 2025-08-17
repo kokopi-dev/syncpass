@@ -182,7 +182,12 @@ case "$1" in
 
                 if [[ "$first_non_flag" == "c" ]]; then
                     if [[ -n "$TERMUX_VERSION" ]] || [[ -d "/data/data/com.termux" ]]; then
-                        echo "termux"
+			if command -v termux-clipboard-set >/dev/null 2>&1; then
+			    command pass ${@:2} | termux-clipboard-set
+			else
+			    echo "Install termux-api, clipboard tool not found."
+			    exit 1
+			fi
                     elif [[ -f "/proc/version" ]] && grep -qi "microsoft\|wsl" /proc/version 2>/dev/null; then
                         command pass ${@:2} | clip.exe
                     elif [[ -n "$WSL_DISTRO_NAME" ]] || [[ -n "$WSLENV" ]]; then
