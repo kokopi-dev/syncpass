@@ -33,7 +33,7 @@ For personal use, or whoever uses pass and wants to sync it to a server.
 
 Run `./syncpass init`
 * Add `u+x` permissions if it doesnt run, or use `bash syncpass`
-* Run `pass update` if you want to force get the password-store from the server on the current machine/device
+Then run `pass init-server` after refreshing bashrc with the new pass overwritten command
 
 ### Setup GPG keys
 

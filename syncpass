@@ -94,6 +94,13 @@ case "$1" in
         # TODO implement a way to diff the current and server versions
         exit 1
         ;;
+    init-server)
+	print_status "INFO" "> Initializing server with local passwords"
+	func_update_server_passwordstore
+        curr_ver=$(func_get_local_version)
+        func_update_server_version $curr_ver
+        print_status "OK" "✓ Server version updated"
+	;;
     update)
         print_status "INFO" "> Preparing to force update local syncpass from server"
         server_ver=$(func_get_server_version)
