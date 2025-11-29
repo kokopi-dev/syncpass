@@ -43,6 +43,17 @@ Can use current gpg keys or make new ones. Then use the `gpg get` on all your ma
 * `pass gpg remove`: this deletes your current gpg keys from the server
 * `pass gpg get`: this gets your gpg keys from the server
 
+Importing keys
+
+After using the get command:
+  - gpg --import public-key.asc
+  - gpg --import private-key.asc
+  - gpg --edit-key KEY_ID
+    - trust
+    - 5
+    - quit
+
+
 ---
 
 ## Non-native pass Commands
